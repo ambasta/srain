@@ -29,7 +29,6 @@
 
 #include "core/core.h"
 #include "config/config.h"
-#include "config/password.h"
 #include "i18n.h"
 #include "utils.h"
 
@@ -137,17 +136,6 @@ SrnRet srn_config_manager_read_server_config(SrnConfigManager *mgr,
                 config_setting_source_file(config_root_setting(&mgr->user_cfg)),
                 RET_MSG(ret));
     }
-    ret = srn_config_manager_lookup_server_password(mgr, &cfg->password, srv_name);
-    if (!RET_IS_OK(ret)){
-        return RET_ERR(_("Error occurred while looking up server password: %1$s"),
-                RET_MSG(ret));
-    }
-    ret = srn_config_manager_lookup_user_password(mgr,
-            &cfg->user->login->password, srv_name, cfg->user->nick);
-    if (!RET_IS_OK(ret)){
-        return RET_ERR(_("Error occurred while looking up user password: %1$s"),
-                RET_MSG(ret));
-    }
 
     return SRN_OK;
 }
@@ -217,14 +205,6 @@ SrnRet srn_config_manager_read_chat_config(SrnConfigManager *mgr,
     if (!RET_IS_OK(ret)){
         return RET_ERR(_("Error occurred while reading chat config in %1$s: %2$s"),
                 config_setting_source_file(config_root_setting(&mgr->user_cfg)),
-                RET_MSG(ret));
-    }
-
-    // In fact we don't known whether this chat is channel
-    ret = srn_config_manager_lookup_channel_password(mgr,
-            &cfg->password, srv_name, chat_name);
-    if (!RET_IS_OK(ret)){
-        return RET_ERR(_("Error occurred while looking up channel password: %1$s"),
                 RET_MSG(ret));
     }
 
