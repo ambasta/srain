@@ -24,19 +24,18 @@
  * @date 2018-12-15
  */
 
-
-#include <sys/stat.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <glib.h>
 #include <glib/gstdio.h>
-#include <fcntl.h>
-#include <errno.h>
+#include <sys/stat.h>
 
-#include "meta.h"
-#include "log.h"
 #include "i18n.h"
+#include "log.h"
+#include "meta.h"
 
-#define DEFAULT_FILE_MODE   (S_IRUSR | S_IWUSR)
-#define DEFAULT_DIR_MODE    (S_IRWXU)
+#define DEFAULT_FILE_MODE (S_IRUSR | S_IWUSR)
+#define DEFAULT_DIR_MODE (S_IRWXU)
 
 static SrnRet create_file_if_not_exist(const char *path);
 static SrnRet create_dir_if_not_exist(const char *path);
@@ -49,70 +48,101 @@ static SrnRet create_dir_if_not_exist(const char *path);
  *
  * @return NULL or path to the theme file, must be freed by g_free.
  */
-char *srn_get_theme_file(const char *name){
-    char *path;
+char *srn_get_theme_file(const char *name) {
+  char *path;
 
-    path = g_build_filename(PACKAGE_DATA_DIR, PACKAGE, "themes", name, NULL);
+  path = g_build_filename(PACKAGE_DATA_DIR, PACKAGE, "themes", name, NULL);
 
-    if (g_file_test(path, G_FILE_TEST_EXISTS)){
-        return path;
-    }
-
-    g_free(path);
-    return NULL;
-}
-
-char *srn_get_user_config_file(){
-    char *path;
-    SrnRet ret;
-
-    path = g_build_filename(g_get_user_config_dir(), PACKAGE, "srain.cfg", NULL);
-
-    ret = create_file_if_not_exist(path);
-    if (!RET_IS_OK(ret)){
-        WARN_FR("Failed to create user configuration file: %1$s", RET_MSG(ret));
-
-        g_free(path);
-        return NULL;
-    }
-
+  if (g_file_test(path, G_FILE_TEST_EXISTS)) {
     return path;
+  }
+
+  g_free(path);
+  return NULL;
 }
 
-char *srn_get_system_config_file(){
-    char *path;
+char *srn_get_user_config_file() {
+  char *path;
+  SrnRet ret;
 
-    path = g_build_filename(PACKAGE_CONFIG_DIR, PACKAGE, "builtin.cfg", NULL);
+  path = g_build_filename(g_get_user_config_dir(), PACKAGE, "srain.cfg", NULL);
 
-    if (g_file_test(path, G_FILE_TEST_EXISTS)){
-        return path;
-    }
-
-    // System configuration file should always exist
-    WARN_FR("'%s' not found", path);
+  ret = create_file_if_not_exist(path);
+  if (!RET_IS_OK(ret)) {
+    WARN_FR("Failed to create user configuration file: %1$s", RET_MSG(ret));
 
     g_free(path);
     return NULL;
+  }
+
+  return path;
+}
+
+char *srn_get_system_config_file() {
+  char *path;
+  const char *const *system_config_dirs = g_get_system_config_dirs();
+
+  for (int i = 0; system_config_dirs[i]; i++) {
+    path =
+        g_build_filename(system_config_dirs[i], PACKAGE, "builtin.cfg", NULL);
+
+    if (g_file_test(path, G_FILE_TEST_EXISTS)) {
+      return path;
+    }
+  }
+
+  path =
+      g_build_filename(g_get_user_config_dir(), PACKAGE, "builtin.cfg", NULL);
+  if (g_file_test(path, G_FILE_TEST_EXISTS)) {
+    return path;
+  }
+
+  // for (auto const config_dir : g_get_system_config_dirs()) {
+  //   auto path = g_build_filename(config_dir, PACKAGE, "builtin.cfg", NULL);
+
+  //   if (g_file_test(path, G_FILE_TEST_EXISTS)) {
+  //     return path;
+  //   }
+  // }
+
+  // for (auto const config_dir : g_get_user_config_dir()) {
+  //   auto path = g_build_filename(config_dir, PACKAGE, "builtin.cfg", NULL);
+
+  //   if (g_file_test(path, G_FILE_TEST_EXISTS)) {
+  //     return path;
+  //   }
+  // }
+  // path = g_build_filename(PACKAGE_CONFIG_DIR, PACKAGE, "builtin.cfg", NULL);
+
+  // if (g_file_test(path, G_FILE_TEST_EXISTS)) {
+  //   return path;
+  // }
+
+  // System configuration file should always exist
+  WARN_FR("'%s' not found", path);
+
+  g_free(path);
+  return NULL;
 }
 
 // FIXME: actually it only create the dir.
-char *srn_create_log_file(const char *srv_name, const char *fname){
-    char *path;
-    SrnRet ret;
+char *srn_create_log_file(const char *srv_name, const char *fname) {
+  char *path;
+  SrnRet ret;
 
-    // $XDG_DATA_HOME/srain/logs/<srv_name>/<fname>
-    path = g_build_filename(g_get_user_data_dir(),
-            PACKAGE, "logs", srv_name, fname, NULL);
+  // $XDG_DATA_HOME/srain/logs/<srv_name>/<fname>
+  path = g_build_filename(g_get_user_data_dir(), PACKAGE, "logs", srv_name,
+                          fname, NULL);
 
-    ret = create_file_if_not_exist(path);
-    if (!RET_IS_OK(ret)){
-        WARN_FR("Failed to create log file: %1$s", RET_MSG(ret));
+  ret = create_file_if_not_exist(path);
+  if (!RET_IS_OK(ret)) {
+    WARN_FR("Failed to create log file: %1$s", RET_MSG(ret));
 
-        g_free(path);
-        return NULL;
-    }
+    g_free(path);
+    return NULL;
+  }
 
-    return path;
+  return path;
 }
 
 /**
@@ -130,105 +160,103 @@ char *srn_create_log_file(const char *srv_name, const char *fname){
  *
  *  FIXME: not in use
  */
-SrnRet srn_create_user_files(){
-    SrnRet ret;
-    char *path;
+SrnRet srn_create_user_files() {
+  SrnRet ret;
+  char *path;
 
-    path = g_build_filename( // $XDG_CONFIG_HOME/srain/
-            g_get_user_config_dir(),
-            PACKAGE,
-            NULL);
-    ret = create_dir_if_not_exist(path);
-    g_free(path);
-    if (!RET_IS_OK(ret)){
-        ret = RET_ERR(_("Failed to create user configuration directory: %1$s"),
-                RET_MSG(ret));
-        goto FIN;
-    }
+  path = g_build_filename( // $XDG_CONFIG_HOME/srain/
+      g_get_user_config_dir(), PACKAGE, NULL);
+  ret = create_dir_if_not_exist(path);
+  g_free(path);
+  if (!RET_IS_OK(ret)) {
+    ret = RET_ERR(_("Failed to create user configuration directory: %1$s"),
+                  RET_MSG(ret));
+    goto FIN;
+  }
 
-    // $XDG_CONFIG_HOME/srain/srain.cfg
-    path = g_build_filename(g_get_user_config_dir(), PACKAGE, "srain.cfg", NULL);
-    ret = create_file_if_not_exist(path);
-    g_free(path);
-    if (!RET_IS_OK(ret)){
-        ret = RET_ERR(_("Failed to create user configuration file: %1$s"),
-                RET_MSG(ret));
-        goto FIN;
-    }
+  // $XDG_CONFIG_HOME/srain/srain.cfg
+  path = g_build_filename(g_get_user_config_dir(), PACKAGE, "srain.cfg", NULL);
+  ret = create_file_if_not_exist(path);
+  g_free(path);
+  if (!RET_IS_OK(ret)) {
+    ret = RET_ERR(_("Failed to create user configuration file: %1$s"),
+                  RET_MSG(ret));
+    goto FIN;
+  }
 
-    // $XDG_CACHE_HOME/srain/
-    path = g_build_filename(g_get_user_cache_dir(), PACKAGE, NULL);
-    ret = create_dir_if_not_exist(path);
-    g_free(path);
-    if (!RET_IS_OK(ret)){
-        ret = RET_ERR(_("Failed to create user cache directory: %1$s"),
-                RET_MSG(ret));
-        goto FIN;
-    }
+  // $XDG_CACHE_HOME/srain/
+  path = g_build_filename(g_get_user_cache_dir(), PACKAGE, NULL);
+  ret = create_dir_if_not_exist(path);
+  g_free(path);
+  if (!RET_IS_OK(ret)) {
+    ret =
+        RET_ERR(_("Failed to create user cache directory: %1$s"), RET_MSG(ret));
+    goto FIN;
+  }
 
-    // $XDG_DATA_HOME/srain/
-    path = g_build_filename(g_get_user_data_dir(), PACKAGE, NULL);
-    ret = create_dir_if_not_exist(path);
-    g_free(path);
-    if (!RET_IS_OK(ret)){
-        ret = RET_ERR(_("Failed to create user data directory: %1$s"),
-                RET_MSG(ret));
-        goto FIN;
-    }
+  // $XDG_DATA_HOME/srain/
+  path = g_build_filename(g_get_user_data_dir(), PACKAGE, NULL);
+  ret = create_dir_if_not_exist(path);
+  g_free(path);
+  if (!RET_IS_OK(ret)) {
+    ret =
+        RET_ERR(_("Failed to create user data directory: %1$s"), RET_MSG(ret));
+    goto FIN;
+  }
 
-    // $XDG_DATA_HOME/srain/logs
-    path = g_build_filename(g_get_user_data_dir(), PACKAGE, "logs", NULL);
-    ret = create_dir_if_not_exist(path);
-    g_free(path);
-    if (!RET_IS_OK(ret)){
-        ret = RET_ERR(_("Failed to create chat logs directory: %1$s"),
-                RET_MSG(ret));
-        goto FIN;
-    }
+  // $XDG_DATA_HOME/srain/logs
+  path = g_build_filename(g_get_user_data_dir(), PACKAGE, "logs", NULL);
+  ret = create_dir_if_not_exist(path);
+  g_free(path);
+  if (!RET_IS_OK(ret)) {
+    ret =
+        RET_ERR(_("Failed to create chat logs directory: %1$s"), RET_MSG(ret));
+    goto FIN;
+  }
 
-    ret = SRN_OK;
+  ret = SRN_OK;
 FIN:
-    return ret;
+  return ret;
 }
 
 SrnRet create_dir_if_not_exist(const char *path) {
-    if (g_file_test(path, G_FILE_TEST_IS_DIR)){
-        return SRN_OK;
-    }
-    if (g_file_test(path, G_FILE_TEST_EXISTS)){
-        return RET_ERR(_("Not a directory"));
-    }
-
-    if (g_mkdir_with_parents(path, DEFAULT_DIR_MODE) == -1) {
-        return RET_ERR("%s", g_strerror(errno));
-    }
-
+  if (g_file_test(path, G_FILE_TEST_IS_DIR)) {
     return SRN_OK;
+  }
+  if (g_file_test(path, G_FILE_TEST_EXISTS)) {
+    return RET_ERR(_("Not a directory"));
+  }
+
+  if (g_mkdir_with_parents(path, DEFAULT_DIR_MODE) == -1) {
+    return RET_ERR("%s", g_strerror(errno));
+  }
+
+  return SRN_OK;
 }
 
 SrnRet create_file_if_not_exist(const char *path) {
-    int fd;
-    char *dir;
-    SrnRet ret;
+  int fd;
+  char *dir;
+  SrnRet ret;
 
-    if (g_file_test(path, G_FILE_TEST_IS_REGULAR)){
-        return SRN_OK;
-    }
-    if (g_file_test(path, G_FILE_TEST_EXISTS)){
-        return RET_ERR(_("Not a regular file"));
-    }
-
-    dir = g_path_get_dirname(path);
-    ret = create_dir_if_not_exist(dir);
-    g_free(dir);
-    if (!RET_IS_OK(ret)){
-        return ret;
-    }
-
-    if ((fd = g_creat(path, DEFAULT_FILE_MODE)) == -1) {
-        return RET_ERR("%s", g_strerror(errno));
-    }
-    g_close(fd, NULL);
-
+  if (g_file_test(path, G_FILE_TEST_IS_REGULAR)) {
     return SRN_OK;
+  }
+  if (g_file_test(path, G_FILE_TEST_EXISTS)) {
+    return RET_ERR(_("Not a regular file"));
+  }
+
+  dir = g_path_get_dirname(path);
+  ret = create_dir_if_not_exist(dir);
+  g_free(dir);
+  if (!RET_IS_OK(ret)) {
+    return ret;
+  }
+
+  if ((fd = g_creat(path, DEFAULT_FILE_MODE)) == -1) {
+    return RET_ERR("%s", g_strerror(errno));
+  }
+  g_close(fd, NULL);
+
+  return SRN_OK;
 }

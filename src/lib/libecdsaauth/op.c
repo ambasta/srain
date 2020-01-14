@@ -25,83 +25,80 @@
 /*
  * Verify a signature.
  */
-bool libecdsaauth_verify(libecdsaauth_key_t *key, unsigned char *blob, size_t len, unsigned char *sig, size_t siglen)
-{
-	if (1 != ECDSA_verify(0, blob, len, sig, siglen, key->eckey))
-		return false;
+bool libecdsaauth_verify(libecdsaauth_key_t *key, unsigned char *blob,
+                         size_t len, unsigned char *sig, size_t siglen) {
+  if (1 != ECDSA_verify(0, blob, len, sig, siglen, key->eckey))
+    return false;
 
-	return true;
+  return true;
 }
 
 /*
  * Verify a base64-encapsulated signature.
  */
-bool libecdsaauth_verify_base64(libecdsaauth_key_t *key, unsigned char *blob, size_t len, char *sig_base64)
-{
-	unsigned char sigbuf[1024];
-	size_t siglen;
+bool libecdsaauth_verify_base64(libecdsaauth_key_t *key, unsigned char *blob,
+                                size_t len, char *sig_base64) {
+  unsigned char sigbuf[1024];
+  size_t siglen;
 
-	siglen = base64_decode(sig_base64, sigbuf, sizeof sigbuf);
+  siglen = base64_decode(sig_base64, (char *)sigbuf, sizeof sigbuf);
 
-	return libecdsaauth_verify(key, blob, len, sigbuf, siglen);
+  return libecdsaauth_verify(key, blob, len, sigbuf, siglen);
 }
 
 /*
  * Sign a challenge.
  */
-bool libecdsaauth_sign(libecdsaauth_key_t *key, unsigned char *in, size_t inlen, unsigned char **out, size_t *outlen)
-{
-	unsigned char *sig_buf, *sig_buf_p;
-	unsigned int sig_len;
+bool libecdsaauth_sign(libecdsaauth_key_t *key, unsigned char *in, size_t inlen,
+                       unsigned char **out, size_t *outlen) {
+  unsigned char *sig_buf, *sig_buf_p;
+  unsigned int sig_len;
 
-	if (key->eckey == NULL)
-		return false;
+  if (key->eckey == NULL)
+    return false;
 
-	sig_len = ECDSA_size(key->eckey);
-	sig_buf = malloc(sig_len);
-	sig_buf_p = sig_buf;
+  sig_len = ECDSA_size(key->eckey);
+  sig_buf = malloc(sig_len);
+  sig_buf_p = sig_buf;
 
-	if (!ECDSA_sign(0, in, inlen, sig_buf_p, &sig_len, key->eckey))
-	{
-		free(sig_buf);
-		return false;
-	}
+  if (!ECDSA_sign(0, in, inlen, sig_buf_p, &sig_len, key->eckey)) {
+    free(sig_buf);
+    return false;
+  }
 
-	*out = sig_buf;
-	*outlen = (size_t) sig_len;
+  *out = sig_buf;
+  *outlen = (size_t)sig_len;
 
-	return true;
+  return true;
 }
 
 /*
  * Sign a challenge and base64 it.
  */
-bool libecdsaauth_sign_base64(libecdsaauth_key_t *key, unsigned char *in, size_t inlen, char **out, size_t *outlen)
-{
-	char buf[1024], inbuf[1024];
-	unsigned char *workbuf_p, *outbuf_p;
-	size_t len, buflen;
+bool libecdsaauth_sign_base64(libecdsaauth_key_t *key, unsigned char *in,
+                              size_t inlen, char **out, size_t *outlen) {
+  char buf[1024], inbuf[1024];
+  unsigned char *outbuf_p;
+  size_t len, buflen;
 
-	memset(inbuf, 0, sizeof inbuf);
-	len = base64_decode(in, inbuf, sizeof inbuf);
-	workbuf_p = (unsigned char *) inbuf;
+  memset(inbuf, 0, sizeof inbuf);
+  len = base64_decode((const char *)in, (char *)inbuf, sizeof inbuf);
+  outbuf_p = NULL;
 
-	outbuf_p = NULL;
+  if (!libecdsaauth_sign(key, (unsigned char *)inbuf, len, &outbuf_p, &buflen))
+    return false;
 
-	if (!libecdsaauth_sign(key, inbuf, len, &outbuf_p, &buflen))
-		return false;
+  if (outbuf_p == NULL)
+    return false;
 
-	if (outbuf_p == NULL)
-		return false;
+  memset(buf, 0, sizeof buf);
+  len = base64_encode((char const *)outbuf_p, buflen, buf, sizeof buf);
+  free(outbuf_p);
 
-	memset(buf, 0, sizeof buf);
-	len = base64_encode(outbuf_p, buflen, buf, sizeof buf);
-	free(outbuf_p);
+  *out = strdup(buf);
+  *outlen = len;
 
-	*out = strdup(buf);
-	*outlen = len;
-
-	return true;
+  return true;
 }
 
 /*******************************************************************************************/
@@ -110,61 +107,59 @@ bool libecdsaauth_sign_base64(libecdsaauth_key_t *key, unsigned char *in, size_t
  * Create a new challenge for a key.
  * Returns an object for tracking the challenge.
  */
-libecdsaauth_challenge_t *libecdsaauth_challenge_new(libecdsaauth_key_t *key)
-{
-	libecdsaauth_challenge_t *challenge = calloc(sizeof(libecdsaauth_challenge_t), 1);
+libecdsaauth_challenge_t *libecdsaauth_challenge_new(libecdsaauth_key_t *key) {
+  libecdsaauth_challenge_t *challenge =
+      calloc(sizeof(libecdsaauth_challenge_t), 1);
 
-	challenge->key = key;
-	RAND_pseudo_bytes(challenge->blob, sizeof(challenge->blob));
+  challenge->key = key;
+  RAND_bytes(challenge->blob, sizeof(challenge->blob));
 
-	return challenge;
+  return challenge;
 }
 
 /*
  * Frees a challenge.
  */
-void libecdsaauth_challenge_free(libecdsaauth_challenge_t *challenge)
-{
-	free(challenge);
+void libecdsaauth_challenge_free(libecdsaauth_challenge_t *challenge) {
+  free(challenge);
 }
 
 /*
  * Returns the challenge bytes as a binary blob.
  */
-unsigned char *libecdsaauth_challenge_bytes(libecdsaauth_challenge_t *challenge)
-{
-	if (challenge->key == NULL)
-		return NULL;
+unsigned char *
+libecdsaauth_challenge_bytes(libecdsaauth_challenge_t *challenge) {
+  if (challenge->key == NULL)
+    return NULL;
 
-	return challenge->blob;
+  return challenge->blob;
 }
 
 /*
  * Returns the size of the challenge payload.
  */
-size_t libecdsaauth_challenge_size(libecdsaauth_challenge_t *challenge)
-{
-	return sizeof(challenge->blob);
+size_t libecdsaauth_challenge_size(libecdsaauth_challenge_t *challenge) {
+  return sizeof(challenge->blob);
 }
 
 /*
  * Verify a challenge against a blob.
  */
-bool libecdsaauth_challenge_verify(libecdsaauth_challenge_t *challenge, unsigned char *blob, size_t len)
-{
-	return libecdsaauth_verify(challenge->key, challenge->blob, sizeof(challenge->blob), blob, len);
+bool libecdsaauth_challenge_verify(libecdsaauth_challenge_t *challenge,
+                                   unsigned char *blob, size_t len) {
+  return libecdsaauth_verify(challenge->key, challenge->blob,
+                             sizeof(challenge->blob), blob, len);
 }
 
 /*
  * Verify a challenge against a base64 blob.
  */
-bool libecdsaauth_challenge_verify_base64(libecdsaauth_challenge_t *challenge, char *blob_base64)
-{
-	unsigned char blob[1024];
-	size_t bloblen;
+bool libecdsaauth_challenge_verify_base64(libecdsaauth_challenge_t *challenge,
+                                          char *blob_base64) {
+  unsigned char blob[1024];
+  size_t bloblen;
 
-	bloblen = base64_decode(blob_base64, blob, sizeof blob);
+  bloblen = base64_decode(blob_base64, (char *)blob, sizeof blob);
 
-	return libecdsaauth_challenge_verify(challenge, blob, bloblen);
+  return libecdsaauth_challenge_verify(challenge, blob, bloblen);
 }
-

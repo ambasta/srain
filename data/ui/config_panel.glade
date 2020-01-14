@@ -253,7 +253,7 @@
   </template>
   <object class="GtkTreeStore">
     <columns>
-      <!-- column-name < 定义一个新的栏 >1 -->
+      <!-- column-name < -->
       <column type="&lt; 定义一个新的栏 &gt;"/>
     </columns>
   </object>

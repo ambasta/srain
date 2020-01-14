@@ -24,13 +24,14 @@
 #include <openssl/ec.h>
 #include <openssl/ecdsa.h>
 #include <openssl/evp.h>
+#include <openssl/pem.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
 
 #include "base64.h"
 
 typedef struct libecdsaauth_key_s {
-	EC_KEY *eckey;
+  EC_KEY *eckey;
 } libecdsaauth_key_t;
 
 /*
@@ -46,12 +47,14 @@ extern libecdsaauth_key_t *libecdsaauth_key_load(const char *filename);
 /*
  * Deserialize a raw public key.
  */
-extern libecdsaauth_key_t *libecdsaauth_key_from_pubkey(unsigned char *pubkey_raw, size_t len);
+extern libecdsaauth_key_t *
+libecdsaauth_key_from_pubkey(unsigned char *pubkey_raw, size_t len);
 
 /*
  * Deserialize a public key in base64 encapsulation.
  */
-extern libecdsaauth_key_t *libecdsaauth_key_from_base64_pubkey(const char *keydata);
+extern libecdsaauth_key_t *
+libecdsaauth_key_from_base64_pubkey(const char *keydata);
 
 /*
  * Free an ECC key.
@@ -64,8 +67,8 @@ extern void libecdsaauth_key_free(libecdsaauth_key_t *key);
 extern size_t libecdsaauth_key_public_key_length(libecdsaauth_key_t *key);
 
 /*
- * Return public key as binary blob.  Use libecdsaauth_key_public_key_length() to
- * get the key length in bytes.
+ * Return public key as binary blob.  Use libecdsaauth_key_public_key_length()
+ * to get the key length in bytes.
  */
 extern unsigned char *libecdsaauth_key_public_key_blob(libecdsaauth_key_t *key);
 

@@ -25,27 +25,30 @@
 #include "sui_buffer.h"
 
 #define SUI_TYPE_WINDOW (sui_window_get_type())
-#define SUI_WINDOW(obj) (G_TYPE_CHECK_INSTANCE_CAST((obj), SUI_TYPE_WINDOW, SuiWindow))
+#define SUI_WINDOW(obj)                                                        \
+  (G_TYPE_CHECK_INSTANCE_CAST((obj), SUI_TYPE_WINDOW, SuiWindow))
 #define SUI_IS_WINDOW(obj) (G_TYPE_CHECK_INSTANCE_TYPE((obj), SUI_TYPE_WINDOW))
 
 typedef struct _SuiWindow SuiWindow;
 typedef struct _SuiWindowClass SuiWindowClass;
 
 GType sui_window_get_type(void);
-SuiWindow* sui_window_new(SuiApplication *app, SuiWindowEvents *events, SuiWindowConfig *cfg);
+SuiWindow *sui_window_new(SuiApplication *app, SuiWindowEvents *events,
+                          SuiWindowConfig *cfg);
 
-SuiWindowEvents* sui_window_get_events(SuiWindow *sui);
+SuiWindowEvents *sui_window_get_events(SuiWindow *sui);
 void sui_window_set_config(SuiWindow *self, SuiWindowConfig *cfg);
-SuiWindowConfig* sui_window_get_config(SuiWindow *self);
+SuiWindowConfig *sui_window_get_config(SuiWindow *self);
 
 void sui_window_add_buffer(SuiWindow *self, SuiBuffer *buffer);
 void sui_window_rm_buffer(SuiWindow *self, SuiBuffer *buffer);
-SuiBuffer *sui_window_get_buffer(SuiWindow *self, const char *name, const char *remark);
+SuiBuffer *sui_window_get_buffer(SuiWindow *self, const char *name,
+                                 const char *remark);
 SuiBuffer *sui_window_get_cur_buffer(SuiWindow *self);
 void sui_window_set_cur_buffer(SuiWindow *self, SuiBuffer *buf);
-SuiSideBar* sui_window_get_side_bar(SuiWindow *self);
+SuiSideBar *sui_window_get_side_bar(SuiWindow *self);
 
 int sui_window_is_active(SuiWindow *self);
-void sui_window_tray_icon_stress(SuiWindow *self, int stress);
+// void sui_window_tray_icon_stress(SuiWindow *self, int stress);
 
 #endif /* __SUI_WINDOW_H */
